@@ -36,6 +36,7 @@
         "editor.formatOnSave": false
     },
     "clangd.arguments": ["--header-insertion=never"],
+    "makefile.configureOnOpen": false,
     "json.schemas": [
         {
             "fileMatch": ["qmk.json"],
