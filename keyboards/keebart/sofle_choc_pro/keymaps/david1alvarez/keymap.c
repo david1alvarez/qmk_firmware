@@ -15,8 +15,8 @@ void keyboard_post_init_user(void) {
 
 // Layer state preservation for returning to the last-used layer
 bool is_screen_saver_active = false;
-uint16_t last_pattern = RGB_MATRIX_SOLID_COLOR;
-uint16_t base_layer_pattern = RGB_MATRIX_SOLID_COLOR;
+uint16_t last_pattern = RGB_MATRIX_GRADIENT_UP_DOWN;
+uint16_t base_layer_pattern = RGB_MATRIX_GRADIENT_UP_DOWN;
 
 enum rgb_control_groups {
     SOLID_GROUP,
@@ -81,18 +81,18 @@ void set_matrix(uint16_t pattern) {
     switch (control_group) {
         case SOLID_GROUP:
             base_layer_pattern = pattern;
-            rgb_matrix_set_speed(RGB_MATRIX_DEFAULT_SPD);
-            rgb_matrix_sethsv(RGB_MATRIX_DEFAULT_HUE, RGB_MATRIX_DEFAULT_SAT, rgb_val);
+            rgb_matrix_set_speed(25);
+            rgb_matrix_sethsv(30, 200, rgb_val);
             rgb_matrix_mode(pattern);
             break;
         case GRADIENT_GROUP:
             base_layer_pattern = pattern;
             rgb_matrix_set_speed(100);
-            rgb_matrix_sethsv(175, RGB_MATRIX_DEFAULT_SAT, rgb_val);
+            rgb_matrix_sethsv(175, 200, rgb_val);
             rgb_matrix_mode(pattern);
             break;
         case RGB_PATTERN_GROUP:
-            rgb_matrix_set_speed_noeeprom(RGB_MATRIX_DEFAULT_SPD);
+            rgb_matrix_set_speed_noeeprom(25);
             rgb_matrix_sethsv_noeeprom(0, 200, rgb_val);
             rgb_matrix_mode_noeeprom(pattern);
             break;
