@@ -69,7 +69,7 @@ enum layers {
     BASE,  // default layer
     GAME,  // gaming-compatible layer
     SYM,   // symbols and function keys
-    EXT,  // extension layer for arrow keys and numpad
+    MOVE,  // movement
     NONE,  // nonfunctional layer for developement use
 };
 
@@ -201,7 +201,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * |LShift|   Z  |   X  |   C  |   V  |   B  |-------|    |-------|   N  |   M  |  ,<  |  .>  |  /?  |  \|  |
  * `-----------------------------------------/       /    \       \-----------------------------------------'
  *            | LCTL | LALT | LCMD | MO   | /LShift /      \ Space \  | MO   |RShift| Page | Page |
- *            |      |      |      | SYM  |/       /        \       \ | EXT  |      | Up   | Down |
+ *            |      |      |      | SYM  |/       /        \       \ | MOVE |      | Up   | Down |
  *            '-----------------------------------'          '-------''---------------------------'
  */
 [BASE] = LAYOUT_split_4x6_5(
@@ -209,7 +209,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     KC_GRAVE, KC_Q,   KC_W,    KC_E,    KC_R,    KC_T,                         KC_Y,     KC_U,     KC_I,    KC_O,    KC_SCLN,  KC_BSPC,
     KC_TAB,   KC_A,   KC_S,    KC_D,    KC_F,    KC_G,                         KC_H,     KC_J,     KC_K,    KC_L,    KC_P,     KC_ENTER,
     KC_LSFT,  KC_Z,   KC_X,    KC_C,    KC_V,    KC_B,    KC_CAPS,   KC_MUTE,  KC_N,     KC_M,     KC_COMM, KC_DOT,  KC_SLSH,  KC_BSLS,
-                      KC_LCTL, KC_LALT, KC_LGUI, MO(SYM), KC_LSFT,   KC_SPC,   MO(EXT),  KC_RSFT,  KC_PGUP, KC_PGDN
+                      KC_LCTL, KC_LALT, KC_LGUI, MO(SYM), KC_LSFT,   KC_SPC,   TT(MOVE),  KC_RSFT,  KC_PGUP, KC_PGDN
 ),
 
 /* 
@@ -259,50 +259,26 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 ),
 
 /*
- * Extension -- arrow keys and numpad numbers
+ * MOVE -- Movement and Numbers
  * ,-----------------------------------------.                    ,-----------------------------------------.
- * |      | NUM1 | NUM2 | NUM3 | NUM4 | NUM5 |                    | NUM6 | NUM7 | NUM8 | NUM9 | NUM0 |      |
+ * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |   1  |   2  |   3  |   4  |  5   |                    |      | PgUp |  Up  |      |      |      |
+ * |      |      |      |  mUp |      |      |                    |  M3  |  M1  |  Up  |  M2  |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |   6  |   7  |   8  |   9  |  0   |-------.    ,-------|      | Left | Down | Right|      |      |
+ * |      |XXXXXX| mLeft| mDown|mRight|      |-------.    ,-------|      | Left | Down | Right|      |      |
  * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |   +  |   -  |   *  |   /  |  .>  |-------|    |-------|      | PgDn |      |      |      |      |
+ * |      |      | Cut  | Copy | Paste|      |-------|    |-------|      |      |      |      |      |      |
  * `-----------------------------------------/       /    \       \-----------------------------------------'
  *            |      |      |      |      | /       /      \       \  |      |      |      |      |
  *            |      |      |      |      |/       /        \       \ |      |      |      |      |
  *            '-----------------------------------'          '-------''---------------------------'
  */
-//  [EXT] = LAYOUT_split_4x6_5(
-//     _______,KC_KP_1,     KC_KP_2,KC_KP_3,   KC_KP_4,KC_KP_5,                       KC_KP_6,KC_KP_7,KC_KP_8,KC_KP_9,KC_KP_0,_______,
-//     _______,KC_1,        KC_2,   KC_3,      KC_4,   KC_5,                          _______,KC_PGUP,KC_UP,  _______,_______,_______,
-//     _______,KC_6,        KC_7,   KC_8,      KC_9,   KC_0,                          _______,KC_LEFT,KC_DOWN,KC_RGHT,_______,_______,
-//     _______,LSFT(KC_EQL),KC_MINS,LSFT(KC_8),KC_SLSH,KC_DOT,   PB_1,     PB_2,      _______,KC_PGDN,_______,_______,_______,_______,
-//                          _______,_______,   _______,_______,  _______,  _______,   _______,_______,_______,_______
-// ),
-
-
-/*
- * EXT -- Movement and Numbers
- * ,-----------------------------------------.                    ,-----------------------------------------.
- * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      | mUp  |      |      |                    |      |      |  Up  |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      | mLeft| mDown|mRight|      |-------.    ,-------|      | Left | Down | Right|      |      |
- * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |   1  |   2  |   3  |   4  |   5  |-------|    |-------|   6  |   7  |   8  |   9  |   0  |      |
- * `-----------------------------------------/       /    \       \-----------------------------------------'
- *            |      |      |  M3  |  M1  | /   M2  /      \       \  |      |      |      |      |
- *            |      |      |      |      |/       /        \       \ |      |      |      |      |
- *            '-----------------------------------'          '-------''---------------------------'
- */
- [EXT] = LAYOUT_split_4x6_5(
+ [MOVE] = LAYOUT_split_4x6_5(
     _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
-    _______,_______,_______, MS_UP ,_______,_______,                  _______,_______, KC_UP ,_______,_______,_______,
-    _______,_______,MS_LEFT,MS_DOWN,MS_RGHT,_______,                  _______,KC_LEFT,KC_DOWN,KC_RGHT,_______,_______,
-    _______,  KC_1 ,  KC_2 ,  KC_3 ,  KC_4 ,  KC_5 ,   PB_1,   PB_2,    KC_6 ,  KC_7 ,  KC_8 ,  KC_9 ,  KC_0 ,_______,
-                _______,_______,MS_BTN3,MS_BTN1,MS_BTN2,          _______,_______,_______,_______,_______
+    _______,_______,XXXXXXX, MS_UP ,XXXXXXX,_______,                  MS_BTN3,MS_BTN1, KC_UP ,MS_BTN2,_______,_______,
+    _______,XXXXXXX,MS_LEFT,MS_DOWN,MS_RGHT,_______,                  _______,KC_LEFT,KC_DOWN,KC_RGHT,_______,_______,
+    _______,_______,G(KC_X),G(KC_C),G(KC_V),_______,   PB_1,   PB_2,  _______,_______,_______,_______,_______,_______,
+                _______,_______,_______,_______,_______,          _______,_______,_______,_______,_______
 ),
 
 /*
@@ -335,7 +311,7 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
     [BASE] = { ENCODER_CCW_CW(KC_WH_D, KC_WH_U), ENCODER_CCW_CW(KC_VOLD, KC_VOLU) },
     [GAME] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
     [SYM] = { ENCODER_CCW_CW(RM_VALD, RM_VALU), ENCODER_CCW_CW(RM_PREV, RM_NEXT) },
-    [EXT] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
+    [MOVE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
     [NONE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
 };
 #endif

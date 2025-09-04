@@ -9,3 +9,5 @@
 #define MOUSEKEY_DELAY              0
 #define MOUSEKEY_TIME_TO_MAX        60
 #define MOUSEKEY_MAX_SPEED          6
+
+#define TAPPING_TOGGLE 2
