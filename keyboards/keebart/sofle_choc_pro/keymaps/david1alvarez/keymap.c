@@ -74,6 +74,15 @@ enum layers {
     NONE,  // nonfunctional layer for developement use
 };
 
+enum tapdances {
+    TD_J_MOUSE, // single tap: j, double tap: toggle mouse layer
+};
+
+#define KC_TD_0 TD(TD_J_MOUSE)
+
+tap_dance_action_t tap_dance_actions[] = {
+    [TD_J_MOUSE] = ACTION_TAP_DANCE_LAYER_TOGGLE(KC_J, MOUSE),
+};
 
 // Matrix setting util
 void set_matrix(uint16_t pattern) {
@@ -208,7 +217,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 [BASE] = LAYOUT_split_4x6_5(
     KC_ESC,   KC_1,   KC_2,    KC_3,    KC_4,    KC_5,                         KC_6,     KC_7,     KC_8,    KC_9,    KC_0,     XXXXXXX,
     KC_GRAVE, KC_Q,   KC_W,    KC_E,    KC_R,    KC_T,                         KC_Y,     KC_U,     KC_I,    KC_O,    KC_SCLN,  KC_BSPC,
-    KC_TAB,   KC_A,   KC_S,    KC_D,    KC_F,    KC_G,                         KC_H,     KC_J,     KC_K,    KC_L,    KC_P,     KC_ENTER,
+    KC_TAB,   KC_A,   KC_S,    KC_D,    KC_F,    KC_G,                         KC_H,     KC_TD_0,  KC_K,    KC_L,    KC_P,     KC_ENTER,
     KC_LSFT,  KC_Z,   KC_X,    KC_C,    KC_V,    KC_B,    KC_CAPS,   KC_MUTE,  KC_N,     KC_M,     KC_COMM, KC_DOT,  KC_SLSH,  KC_BSLS,
                       KC_LCTL, KC_LALT, KC_LGUI, MO(SYM), KC_LSFT,   KC_SPC,  MO(ARROW), TG(MOUSE),  KC_PGUP, KC_PGDN
 ),
@@ -264,11 +273,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  * ,-----------------------------------------.                    ,-----------------------------------------.
  * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |                    |  M2  |  M1  |  mUp |  M3  |      |      |
+ * |      |      |      |      |      |      |                    |      |      |  Up  |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------.    ,-------|      |mLeft |mDown |mRight|  Up  |      |
+ * |      |      |      |      |      |      |-------.    ,-------|      | Left | Down | Right|      |      |
  * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------|    |-------|      |      |      | Left | Down | Right|
+ * |      |      |      |      |      |      |-------|    |-------|      |      |      |      |      |      |
  * `-----------------------------------------/       /    \       \-----------------------------------------'
  *            |      |      |      |      | /       /      \       \  |      |      |      |      |
  *            |      |      |      |      |/       /        \       \ |      |      |      |      |
@@ -284,23 +293,24 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 /*
  * MOUSE -- Mouse movement
+ * todo: add turbo button at 'p'? default to slow/accurate speed, then go fast when 'p' is held
  * ,-----------------------------------------.                    ,-----------------------------------------.
  * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
  * |      |      |      |      |      |      |                    |  M2  |  M1  |  mUp |  M3  |      |      |
  * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------.    ,-------|      |mLeft |mDown |mRight|  Up  |      |
+ * |      |      |      |      |      |      |-------.    ,-------|  TG  |mLeft |mDown |mRight|turbo?|      |
  * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------|    |-------|  M3  |      |      | Left | Down | Right|
+ * |      |      |      |      |      |      |-------|    |-------|  M3  |      |      |      |      |      |
  * `-----------------------------------------/       /    \       \-----------------------------------------'
- *            |      |      |      |      | /       /      \   M1  \  |  M2  |      |      |      |
+ *            |      |      |      |      | /       /      \   M1  \  |TD(M2)|      |      |      |
  *            |      |      |      |      |/       /        \       \ |      |      |      |      |
  *            '-----------------------------------'          '-------''---------------------------'
  */
  [MOUSE] = LAYOUT_split_4x6_5(
     _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
     _______,_______,_______,_______,_______,_______,                  MS_BTN2,MS_BTN1, MS_UP ,MS_BTN3,_______,_______,
-    _______,_______,_______,_______,_______,_______,                  _______,MS_LEFT,MS_DOWN,MS_RGHT,_______,_______,
+    _______,_______,_______,_______,_______,_______,                  TG(MOUSE),MS_LEFT,MS_DOWN,MS_RGHT,_______,_______,
     _______,_______,_______,_______,_______,_______,   PB_1,   PB_2,  MS_BTN3,_______,_______,_______,_______,_______,
                 _______,_______,_______,_______,_______,          MS_BTN1,MS_BTN2,_______,_______,_______
 ),
@@ -332,11 +342,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 #if defined(ENCODER_MAP_ENABLE)
 const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
-    [BASE] = { ENCODER_CCW_CW(KC_WH_D, KC_WH_U), ENCODER_CCW_CW(KC_VOLD, KC_VOLU) },
+    [BASE] = { ENCODER_CCW_CW(KC_WH_D, KC_WH_U), ENCODER_CCW_CW(KC_WH_D, KC_WH_U) },
     [GAME] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
-    [SYM] = { ENCODER_CCW_CW(RM_VALD, RM_VALU), ENCODER_CCW_CW(RM_PREV, RM_NEXT) },
+    [SYM] = { ENCODER_CCW_CW(RM_VALD, RM_VALU), ENCODER_CCW_CW(KC_VOLD, KC_VOLU) },
     [ARROW] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
-    [MOUSE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
+    [MOUSE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(KC_WH_D, KC_WH_U) },
     [NONE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
 };
 #endif
