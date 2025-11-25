@@ -4,117 +4,61 @@
 #include QMK_KEYBOARD_H
 #define NUM_TIMEOUT 20 * 60 * 1000  // 10 min milliseconds
 
+// reset activity timestamps on keyboard init for screensaver logic
 void keyboard_post_init_user(void) {
     set_activity_timestamps(0,0,0);
 }
 
-
-// Layer state preservation for returning to the last-used layer
-bool is_screen_saver_active = false;
-uint16_t last_pattern = RGB_MATRIX_GRADIENT_UP_DOWN;
-uint16_t base_layer_pattern = RGB_MATRIX_GRADIENT_UP_DOWN;
-
-enum rgb_control_groups {
-    SOLID_GROUP,
-    GRADIENT_GROUP,
-    RGB_PATTERN_GROUP,
-    MATRIX_GROUP,
-};
-
-// Map patterns to rgb_control_groups
-enum rgb_control_groups get_rgb_control_group(uint16_t pattern) {
-    switch (pattern) {
-        case RGB_MATRIX_SOLID_COLOR:
-            return SOLID_GROUP;
-        case RGB_MATRIX_GRADIENT_UP_DOWN:
-            return GRADIENT_GROUP;
-        case RGB_MATRIX_BAND_SPIRAL_VAL:
-        case RGB_MATRIX_CYCLE_LEFT_RIGHT:
-        case RGB_MATRIX_CYCLE_UP_DOWN:
-        case RGB_MATRIX_CYCLE_OUT_IN:
-        case RGB_MATRIX_CYCLE_OUT_IN_DUAL:
-        case RGB_MATRIX_RAINBOW_MOVING_CHEVRON:
-        case RGB_MATRIX_CYCLE_PINWHEEL:
-        case RGB_MATRIX_DUAL_BEACON:
-        case RGB_MATRIX_RAINBOW_BEACON:
-            return RGB_PATTERN_GROUP;
-        case RGB_MATRIX_DIGITAL_RAIN:
-            return MATRIX_GROUP;
-        default:
-            return SOLID_GROUP;
-    }
-}
-
-
-// RGB favorite patterns, for use in randomly selecting a pattern
-uint8_t selected_rgb_pattern_index = 4;
-uint8_t rgb_patterns[] = {
-    RGB_MATRIX_BAND_SPIRAL_VAL,
-    RGB_MATRIX_CYCLE_LEFT_RIGHT,
-    RGB_MATRIX_CYCLE_UP_DOWN,
-    RGB_MATRIX_CYCLE_OUT_IN,
-    RGB_MATRIX_CYCLE_OUT_IN_DUAL,
-    RGB_MATRIX_RAINBOW_MOVING_CHEVRON,
-    RGB_MATRIX_CYCLE_PINWHEEL,
-    RGB_MATRIX_DUAL_BEACON,
-    RGB_MATRIX_RAINBOW_BEACON
-};
-uint8_t rgb_patterns_length = sizeof(rgb_patterns) / sizeof(rgb_patterns[0]);
-
 enum layers {
     BASE,  // default layer
     GAME,  // gaming-compatible layer
-    SYM,   // symbols and function keys
     ARROW,  // arrowkey movement
     MOUSE, // mouse movement
+    SYM,   // symbols and function keys
     NONE,  // nonfunctional layer for developement use
 };
 
-enum tapdances {
-    TD_J_MOUSE, // single tap: j, double tap: toggle mouse layer
-    TD_H_MOUSE_OFF,
-};
+// set default values
+uint16_t last_active_layer = BASE;
+bool is_screen_saver_active = false;
+uint16_t rgb_val = RGB_MATRIX_DEFAULT_VAL;
 
-#define KC_TD_J TD(TD_J_MOUSE)
-#define KC_TD_H TD(TD_H_MOUSE_OFF)
-#define KC_LT_0 LT(ARROW, MS_BTN2)
-
-
-tap_dance_action_t tap_dance_actions[] = {
-    [TD_J_MOUSE] = ACTION_TAP_DANCE_LAYER_TOGGLE(KC_J, MOUSE),
-    [TD_H_MOUSE_OFF] = ACTION_TAP_DANCE_LAYER_MOVE(KC_H, BASE),
-};
-
-// Matrix setting util
-void set_matrix(uint16_t pattern) {
-    uint16_t rgb_val = rgb_matrix_get_val();
-    enum rgb_control_groups control_group = get_rgb_control_group(pattern);
-    switch (control_group) {
-        case SOLID_GROUP:
-            base_layer_pattern = pattern;
-            rgb_matrix_set_speed(25);
-            rgb_matrix_sethsv(30, 200, rgb_val);
-            rgb_matrix_mode(pattern);
-            break;
-        case GRADIENT_GROUP:
-            base_layer_pattern = pattern;
+// RGB matrix setting for each layer
+void set_matrix_by_layer(enum layers layer) {
+    switch (layer) {
+        case BASE: // always use gradient for base layer, simplify logic
             rgb_matrix_set_speed(100);
             rgb_matrix_sethsv(175, 200, rgb_val);
-            rgb_matrix_mode(pattern);
+            rgb_matrix_mode(RGB_MATRIX_GRADIENT_UP_DOWN);
             break;
-        case RGB_PATTERN_GROUP:
+        case GAME:
             rgb_matrix_set_speed_noeeprom(25);
             rgb_matrix_sethsv_noeeprom(0, 200, rgb_val);
-            rgb_matrix_mode_noeeprom(pattern);
+            rgb_matrix_mode_noeeprom(RGB_MATRIX_CYCLE_OUT_IN_DUAL);
             break;
-        case MATRIX_GROUP:
-            rgb_matrix_set_speed_noeeprom(150);
-            rgb_matrix_sethsv_noeeprom(0, 255, rgb_val);
-            rgb_matrix_mode_noeeprom(pattern);
+        case MOUSE:
+            rgb_matrix_set_speed(100);
+            rgb_matrix_sethsv_noeeprom(0, 0, rgb_val - 30 > RGB_VAL_MIN ? rgb_val - 30 : RGB_VAL_MIN);
+            rgb_matrix_mode_noeeprom(RGB_MATRIX_SOLID_COLOR);
+            break;
+        case ARROW:
+            rgb_matrix_set_speed(100);
+            rgb_matrix_sethsv_noeeprom(0, 0, rgb_val - 50 > RGB_VAL_MIN ? rgb_val - 50 : RGB_VAL_MIN);
+            rgb_matrix_mode_noeeprom(RGB_MATRIX_SOLID_COLOR);
+            break;
+        case SYM:
+            rgb_matrix_set_speed(100);
+            rgb_matrix_sethsv_noeeprom(150, 200, rgb_val);
+            rgb_matrix_mode_noeeprom(RGB_MATRIX_GRADIENT_UP_DOWN);
+            break;
+        case NONE: 
+            rgb_matrix_set_speed(255);
+            rgb_matrix_sethsv_noeeprom(0, 100, rgb_val);
+            rgb_matrix_mode_noeeprom(RGB_MATRIX_BREATHING);
             break;
         default:
-            break;
-   }
+            return;
+    }
 }
 
 // Reset the board brightness
@@ -122,76 +66,138 @@ void reset_rgb_val(void) {
     uint8_t hue = rgb_matrix_get_hue();
     uint8_t sat = rgb_matrix_get_sat();
     rgb_matrix_sethsv(hue, sat, RGB_MATRIX_DEFAULT_VAL);
+    rgb_val = RGB_MATRIX_DEFAULT_VAL;
 }
 
 // Per-tick check, use for screensaver detection
+// Overwrites default/provided matrix_scan_user function behavior
 void matrix_scan_user(void) { // matrix screensaver
     if (is_screen_saver_active && last_input_activity_elapsed() < NUM_TIMEOUT) {
-        set_matrix(last_pattern);
+        set_matrix_by_layer(last_active_layer);
+        layer_move(last_active_layer);
         is_screen_saver_active = false;
     }
     if (!is_screen_saver_active && last_input_activity_elapsed() > NUM_TIMEOUT) {
-        last_pattern = rgb_matrix_get_mode();
-        set_matrix(RGB_MATRIX_DIGITAL_RAIN);
+        rgb_matrix_set_speed_noeeprom(150);
+        rgb_matrix_sethsv_noeeprom(0, 255, rgb_val);
+        rgb_matrix_mode_noeeprom(RGB_MATRIX_DIGITAL_RAIN);
         is_screen_saver_active = true;
     }
 }
 
+// single tap: j, double tap: enable mouse layer
+void dance_j(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 1) {
+        tap_code(KC_J);
+    } else {
+        layer_on(MOUSE);
+        set_matrix_by_layer(MOUSE);
+    }
+}
+// single tap: h, double tap: disable mouse layer
+void dance_h(tap_dance_state_t *state, void *user_data) {
+    if (state->count == 1) {
+        tap_code(KC_H);
+    } else {
+        layer_off(MOUSE);
+        set_matrix_by_layer(last_active_layer);
+    }
+}
+
+enum tapdances { TD_J_MOUSE_ON, TD_H_MOUSE_OFF };
+tap_dance_action_t tap_dance_actions[] = {
+    [TD_J_MOUSE_ON] = ACTION_TAP_DANCE_FN(dance_j),
+    [TD_H_MOUSE_OFF] = ACTION_TAP_DANCE_FN(dance_h),
+};
+
+#define KC_TD_J TD(TD_J_MOUSE_ON)
+#define KC_TD_H TD(TD_H_MOUSE_OFF)
+
 // Keypress intercept
+// Overwrites default/provided process_record_user function behavior
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (is_screen_saver_active) {
+        // require keypress to exit screensaver mode
         return false;
-    }
+    }   
     switch (keycode) {
-        case TO(GAME):
+        case TG(MOUSE): // toggle mouse layer, returning to GAME or BASE layer as appropriate
+            if (record->event.pressed) {
+                if (IS_LAYER_ON(MOUSE)) {
+                    if (layer_state == GAME) {
+                        last_active_layer = GAME;
+                    } else {
+                        last_active_layer = BASE;
+                    }
+                    layer_off(MOUSE);
+                    set_matrix_by_layer(last_active_layer);
+                } else {
+                    layer_on(MOUSE);
+                    set_matrix_by_layer(MOUSE);
+                }
+            }
+            return false;
+        case TO(GAME): // toggle between GAME and BASE layers
             if (record->event.pressed) {
                 if (IS_LAYER_ON(GAME)) {
-                    set_matrix(base_layer_pattern);
-                    layer_off(GAME);
+                    last_active_layer = BASE;
+                    set_matrix_by_layer(BASE);
+                    layer_move(BASE);
                 } else {
-                    int pattern_length = sizeof(rgb_patterns) / sizeof(rgb_patterns[0]);
-                    int selected_rgb_pattern_index = random() % (pattern_length - 1);                    
-                    int pattern = rgb_patterns[selected_rgb_pattern_index];
-                    set_matrix(pattern);
+                    last_active_layer = GAME;
+                    set_matrix_by_layer(GAME);
                     layer_move(GAME);
                 }
             }
             return false;
-        case PB_1:
+        case MO(ARROW): // momentary arrow layer
             if (record->event.pressed) {
-                base_layer_pattern = RGB_MATRIX_SOLID_COLOR;
-                set_matrix(RGB_MATRIX_SOLID_COLOR);
+                set_matrix_by_layer(ARROW);
+                layer_on(ARROW);
+            } else {
+                set_matrix_by_layer(last_active_layer);
+                layer_off(ARROW);
             }
             return false;
-        case PB_2:
+        case MO(SYM): // momentary symbols layer
             if (record->event.pressed) {
-                base_layer_pattern = RGB_MATRIX_GRADIENT_UP_DOWN;
-                set_matrix(RGB_MATRIX_GRADIENT_UP_DOWN);
+                set_matrix_by_layer(SYM);
+                layer_on(SYM);
+            } else {
+                if (IS_LAYER_ON(GAME)) {
+                    last_active_layer = GAME;
+                } else {
+                    last_active_layer = BASE;
+                }
+                set_matrix_by_layer(last_active_layer);
+                layer_off(SYM);
             }
             return false;
-        case PB_3:
+        case PB_1: // reset brightness to default, save to persistent storage
             if(record->event.pressed) {
                 reset_rgb_val();
             }
             return false;
-        case RM_PREV:
-            if (record->event.pressed && IS_LAYER_ON(GAME)) {
-                if (selected_rgb_pattern_index >= 1) {
-                    selected_rgb_pattern_index--;
+        case RM_VALU: // increase brightness up to maximum, save to persistent storage
+            if (record->event.pressed) {
+                rgb_val = rgb_matrix_get_val();
+                if (rgb_val + 10 <= RGB_VAL_MAX) {
+                    rgb_val += 10;
                 } else {
-                    selected_rgb_pattern_index = rgb_patterns_length - 1;
+                    rgb_val = RGB_VAL_MAX;
                 }
-                set_matrix(rgb_patterns[selected_rgb_pattern_index]);
+                rgb_matrix_sethsv(rgb_matrix_get_hue(), rgb_matrix_get_sat(), rgb_val);
             }
             return false;
-        case RM_NEXT:
-            if (record->event.pressed && IS_LAYER_ON(GAME)) {
-                if (selected_rgb_pattern_index < rgb_patterns_length - 1) {
-                    selected_rgb_pattern_index++;
+        case RM_VALD: // decrease brightness down to minimum, save to persistent storage
+            if (record->event.pressed) {
+                rgb_val = rgb_matrix_get_val();
+                if (rgb_val - 10 >= RGB_VAL_MIN) {
+                    rgb_val -= 10;
                 } else {
-                    selected_rgb_pattern_index = 0;
-                }
-                set_matrix(rgb_patterns[selected_rgb_pattern_index]);
+                    rgb_val = RGB_VAL_MIN;
+                } 
+                rgb_matrix_sethsv(rgb_matrix_get_hue(), rgb_matrix_get_sat(), rgb_val);
             }
             return false;
         default:
@@ -247,6 +253,52 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 ),
 
 /*
+ * MOUSE -- Mouse movement
+ * ,-----------------------------------------.                    ,-----------------------------------------.
+ * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
+ * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |                    |      |      |  mUp |      |      |      |
+ * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |-------.    ,-------| TD_H |mLeft |mDown |mRight|      |      |
+ * |------+------+------+------+------+------|       |    |       |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |-------|    |-------|  M3  |      |      |      |      |      |
+ * `-----------------------------------------/       /    \       \-----------------------------------------'
+ *            |      |      |      |      | /       /      \   M1  \  |  M2  |      |      |      |
+ *            |      |      |      |      |/       /        \       \ |      |      |      |      |
+ *            '-----------------------------------'          '-------''---------------------------'
+ */
+ [MOUSE] = LAYOUT_split_4x6_5(
+    _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
+    _______,_______,_______,_______,_______,_______,                  _______,_______, MS_UP ,_______,_______,_______,
+    _______,_______,_______,_______,_______,_______,                  KC_TD_H,MS_LEFT,MS_DOWN,MS_RGHT,_______,_______,
+    _______,_______,_______,_______,_______,_______,_______,  _______,MS_BTN3,_______,_______,_______,_______,_______,
+                _______,_______,_______,_______,_______,          MS_BTN1,MS_BTN2,_______,_______,_______
+),
+
+/*
+ * ARROW -- Arrow key movement
+ * ,-----------------------------------------.                    ,-----------------------------------------.
+ * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
+ * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |                    |      |      |  Up  |      |      |      |
+ * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |-------.    ,-------|      | Left | Down | Right|      |      |
+ * |------+------+------+------+------+------|       |    |       |------+------+------+------+------+------|
+ * |      |      |      |      |      |      |-------|    |-------|      |      |      |      |      |      |
+ * `-----------------------------------------/       /    \       \-----------------------------------------'
+ *            |      |      |      |      | /       /      \       \  |      |      |      |      |
+ *            |      |      |      |      |/       /        \       \ |      |      |      |      |
+ *            '-----------------------------------'          '-------''---------------------------'
+ */
+ [ARROW] = LAYOUT_split_4x6_5(
+    _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
+    _______,_______,_______,_______,_______,_______,                  _______,_______, KC_UP ,_______,_______,_______,
+    _______,_______,_______,_______,_______,_______,                  _______,KC_LEFT,KC_DOWN,KC_RGHT,_______,_______,
+    _______,_______,_______,_______,_______,_______,_______,  _______,_______,_______,_______,_______,_______,_______,
+                _______,_______,_______,_______,_______,          _______,_______,_______,_______,_______
+),
+
+/*
  * SYMBOLS -- function keys and symbols
  * ,-----------------------------------------.                    ,-----------------------------------------.
  * |      |   F1 |   F2 |   F3 |   F4 |   F5 |                    |   F6 |   F7 |   F8 |  F9  |  F10 |TOGAME|
@@ -265,56 +317,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______, KC_F1,        KC_F2,         KC_F3,       KC_F4,        KC_F5,                             KC_F6,     KC_F7,        KC_F8,        KC_F9,         KC_F10,        TO(GAME),
     _______, LSFT(KC_1),   LSFT(KC_2),    LSFT(KC_3),  LSFT(KC_4),   LSFT(KC_5),                        LSFT(KC_6),LSFT(KC_7),   LSFT(KC_8),   KC_F11,        KC_F12,        KC_DEL,
     _______, LSFT(KC_BSLS),KC_MINS,       KC_EQL,      KC_QUOT,      LSFT(KC_COMM),                     KC_LBRC,   LSFT(KC_LBRC),LSFT(KC_RBRC),LSFT(KC_9),    LSFT(KC_0),    _______,
-    _______, KC_BSLS,      LSFT(KC_MINS), LSFT(KC_EQL),LSFT(KC_QUOT),LSFT(KC_DOT),  PB_3,     _______,  KC_RBRC,   LSFT(KC_DOT), KC_SCLN,      LSFT(KC_SCLN), LSFT(KC_SLSH), _______,
+    _______, KC_BSLS,      LSFT(KC_MINS), LSFT(KC_EQL),LSFT(KC_QUOT),LSFT(KC_DOT),  PB_1,     _______,  KC_RBRC,   LSFT(KC_DOT), KC_SCLN,      LSFT(KC_SCLN), LSFT(KC_SLSH), _______,
                            _______,       _______,     _______,      _______,       _______,  _______,  _______,   _______,      KC_HOME,      KC_END
-),
-
-
-/*
- * MOUSE -- Mouse movement
- * TODO: make MS_BTN2 when held activate the ARROW layer. Default layer-switching functions like LT() don't work here as MS_ is not KC_
- * ,-----------------------------------------.                    ,-----------------------------------------.
- * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |                    |      |      |  mUp |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------.    ,-------| TD_H |mLeft |mDown |mRight|      |      |
- * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------|    |-------|  M3  |      |      |      |      |      |
- * `-----------------------------------------/       /    \       \-----------------------------------------'
- *            |      |      |      |      | /       /      \   M1  \  |  M2  |      |      |      |
- *            |      |      |      |      |/       /        \       \ |      |      |      |      |
- *            '-----------------------------------'          '-------''---------------------------'
- */
- [MOUSE] = LAYOUT_split_4x6_5(
-    _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
-    _______,_______,_______,_______,_______,_______,                  _______,_______, MS_UP ,_______,_______,_______,
-    _______,_______,_______,_______,_______,_______,                  KC_TD_H,MS_LEFT,MS_DOWN,MS_RGHT,_______,_______,
-    _______,_______,_______,_______,_______,_______,   PB_1,   PB_2,  MS_BTN3,_______,_______,_______,_______,_______,
-                _______,_______,_______,_______,_______,          MS_BTN1,MS_BTN2,_______,_______,_______
-),
-
-/*
- * ARROW -- Arrow key movement
- * ,-----------------------------------------.                    ,-----------------------------------------.
- * |      |      |      |      |      |      |                    |      |      |      |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |                    |      |      |  Up  |      |      |      |
- * |------+------+------+------+------+------|                    |------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------.    ,-------|      | Left | Down | Right|      |      |
- * |------+------+------+------+------+------| Solid |    |Grdient|------+------+------+------+------+------|
- * |      |      |      |      |      |      |-------|    |-------|      |      |      |      |      |      |
- * `-----------------------------------------/       /    \       \-----------------------------------------'
- *            |      |      |      |      | /       /      \       \  |      |      |      |      |
- *            |      |      |      |      |/       /        \       \ |      |      |      |      |
- *            '-----------------------------------'          '-------''---------------------------'
- */
- [ARROW] = LAYOUT_split_4x6_5(
-    _______,_______,_______,_______,_______,_______,                  _______,_______,_______,_______,_______,_______,
-    _______,_______,_______,_______,_______,_______,                  _______,_______, KC_UP ,_______,_______,_______,
-    _______,_______,_______,_______,_______,_______,                  _______,KC_LEFT,KC_DOWN,KC_RGHT,_______,_______,
-    _______,_______,_______,_______,_______,_______,   PB_1,   PB_2,  _______,_______,_______,_______,_______,_______,
-                _______,_______,_______,_______,_______,          _______,_______,_______,_______,_______
 ),
 
 /*
@@ -346,9 +350,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
     [BASE] = { ENCODER_CCW_CW(KC_WH_D, KC_WH_U), ENCODER_CCW_CW(KC_WH_D, KC_WH_U) },
     [GAME] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
-    [SYM] = { ENCODER_CCW_CW(RM_VALD, RM_VALU), ENCODER_CCW_CW(KC_VOLD, KC_VOLU) },
     [MOUSE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(KC_WH_D, KC_WH_U) },
     [ARROW] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
+    [SYM] = { ENCODER_CCW_CW(RM_VALD, RM_VALU), ENCODER_CCW_CW(KC_VOLD, KC_VOLU) },
     [NONE] = { ENCODER_CCW_CW(_______, _______), ENCODER_CCW_CW(_______, _______) },
 };
 #endif
