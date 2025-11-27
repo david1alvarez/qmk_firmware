@@ -61,6 +61,21 @@ void set_matrix_by_layer(enum layers layer) {
     }
 }
 
+// Restore lighting effects when diasabling a layer
+void lighting_dynamic_rollback(void) {
+    if (IS_LAYER_ON(SYM)) {
+        set_matrix_by_layer(SYM);
+    } else if (IS_LAYER_ON(ARROW)) {
+        set_matrix_by_layer(ARROW);
+    } else if (IS_LAYER_ON(MOUSE)) {
+        set_matrix_by_layer(MOUSE);
+    } else if (IS_LAYER_ON(GAME)) {
+        set_matrix_by_layer(GAME);
+    } else {
+        set_matrix_by_layer(BASE);
+    }
+}
+
 // Reset the board brightness
 void reset_rgb_val(void) {
     uint8_t hue = rgb_matrix_get_hue();
@@ -124,13 +139,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case TG(MOUSE): // toggle mouse layer, returning to GAME or BASE layer as appropriate
             if (record->event.pressed) {
                 if (IS_LAYER_ON(MOUSE)) {
-                    if (layer_state == GAME) {
-                        last_active_layer = GAME;
-                    } else {
-                        last_active_layer = BASE;
-                    }
                     layer_off(MOUSE);
-                    set_matrix_by_layer(last_active_layer);
+                    lighting_dynamic_rollback();
                 } else {
                     layer_on(MOUSE);
                     set_matrix_by_layer(MOUSE);
@@ -140,37 +150,30 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case TO(GAME): // toggle between GAME and BASE layers
             if (record->event.pressed) {
                 if (IS_LAYER_ON(GAME)) {
-                    last_active_layer = BASE;
-                    set_matrix_by_layer(BASE);
-                    layer_move(BASE);
+                    layer_off(GAME);
+                    lighting_dynamic_rollback();
                 } else {
-                    last_active_layer = GAME;
+                    layer_on(GAME);
                     set_matrix_by_layer(GAME);
-                    layer_move(GAME);
                 }
             }
             return false;
         case MO(ARROW): // momentary arrow layer
             if (record->event.pressed) {
-                set_matrix_by_layer(ARROW);
                 layer_on(ARROW);
+                set_matrix_by_layer(ARROW);
             } else {
-                set_matrix_by_layer(last_active_layer);
                 layer_off(ARROW);
+                lighting_dynamic_rollback();
             }
             return false;
         case MO(SYM): // momentary symbols layer
             if (record->event.pressed) {
-                set_matrix_by_layer(SYM);
                 layer_on(SYM);
+                set_matrix_by_layer(SYM);
             } else {
-                if (IS_LAYER_ON(GAME)) {
-                    last_active_layer = GAME;
-                } else {
-                    last_active_layer = BASE;
-                }
-                set_matrix_by_layer(last_active_layer);
                 layer_off(SYM);
+                lighting_dynamic_rollback();
             }
             return false;
         case PB_1: // reset brightness to default, save to persistent storage
